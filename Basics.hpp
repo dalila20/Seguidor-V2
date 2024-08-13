@@ -15,10 +15,22 @@ void lerSensores(int* vetorDeLeitura)
 {
 	for(int i = 0; i < NUM_SENSORES; i++)
 	{
-		vetorDeLeitura[i] = !digitalRead(sensores[i]);
-    Serial.print(vetorDeLeitura[i]);
+		if (sensores[i] == A0 || sensores[i] == A1
+		|| sensores[i] == A2 || sensores[i] == A3
+		|| sensores[i] == A4)
+		{
+			int leitura = analogRead(sensores[i]);
+			if (leitura <= 80) {
+				vetorDeLeitura[i] = 1;
+			} else {
+				vetorDeLeitura[i] = 0;
+			}
+		} else {
+			vetorDeLeitura[i] = !digitalRead(sensores[i]);
+		}
+    // Serial.print(vetorDeLeitura[i]);
 	}
-  Serial.println("");
+  // Serial.println("");
 }
 
 // Unused
@@ -137,21 +149,20 @@ void conversao(int direcao)
 		return;
 	}
 
-	// Adaptar pro central?
-	//Rodo até o sensores do meio ficarem inativos
-	while(leituraDosSensores[4] || leituraDosSensores[5])
+	// Rodo até o sensor do meio ficar inativo
+	while(leituraDosSensores[4])
 	{
 		lerSensores(leituraDosSensores);
 	}
 
-	//Depois rodo até os sensores do meio ficarem ativos
-	while(!leituraDosSensores[4] && !leituraDosSensores[5])
+	// Depois rodo até o sensor do meio ficar ativo
+	while(!leituraDosSensores[4])
 	{
 		lerSensores(leituraDosSensores);
 	}
 }
 
-int identificarSensoresAlternados(const int* leituraDosSensores, int inicial = 1, int final = 9)
+int identificarSensoresAlternados(const int* leituraDosSensores, int inicial = 1, int final = NUM_SENSORES - 1)
 {
 	int index = inicial;
 	int sensoresAlternados = 0;
@@ -183,8 +194,8 @@ int identificarSensoresAlternados(const int* leituraDosSensores, int inicial = 1
 	return sensoresAlternados;
 }
 
-// 2 a 7
-int identificarLinha(const int* leituraDosSensores, int inicial = 0, int final = NUM_SENSORES){
+// 2 a 6
+int identificarLinha(const int* leituraDosSensores, int inicial = 2, int final = NUM_SENSORES - 2){
 	for(int i = inicial; i < final; i++)
 	{
 		if (leituraDosSensores[i])
@@ -197,23 +208,25 @@ int identificarLinha(const int* leituraDosSensores, int inicial = 0, int final =
 
 float erroAnterior = 0;
 float calcularErro(const int* leituraDosSensores,
-					int inicial = 1,
-					int final = NUM_SENSORES - 1,
+					int inicial = 2,
+					int final = NUM_SENSORES - 2,
 					bool salvarErro = true)
 {
 	float erro = 0;
 	int somatorioSensores = 0;
-	int pesos[NUM_SENSORES] = {-5, -5, -2, -1, 0, 1, 2, 5, 5};
-	for(int i = inicial; i < final; i++){
-
+	int pesos[NUM_SENSORES] = {0, 0, -4, -1, 0, 1, 4, 0, 0};
+	for (int i = inicial; i < final; i++)
+	{
 		erro += leituraDosSensores[i] * pesos[i];
 		somatorioSensores += leituraDosSensores[i];
 	}
-  if(somatorioSensores != 0){
-		 erro = erro/somatorioSensores;
+
+	if (somatorioSensores != 0)
+	{
+		erro = erro / somatorioSensores;
 	}
 
-	if(erro != 0 && salvarErro) erroAnterior = erro;
+	if (erro != 0 && salvarErro) erroAnterior = erro;
 	return erro;
 }
 
@@ -250,7 +263,7 @@ float calcularPID(const float& erro, bool fullPID = true)
   return erroPID;
 }
 
-//Loop para selecionar configuracoes
+// Loop para selecionar configuracoes
 int configMain()
 {
   bip(1, 400);
@@ -276,13 +289,13 @@ int configMain()
   switch (selecionado)
   {
   case 1: //Velocidade Normal
-    setSpeedA = nominalSetSPD;
-    setSpeedB = nominalSetSPD;
+    setSpeedA = nominalSetSPDA;
+    setSpeedB = nominalSetSPDB;
     break;
 
   case 2: //Velocidade alta
-    setSpeedA = maxSetSPD;
-    setSpeedB = maxSetSPD;
+    setSpeedA = maxSetSPDA;
+    setSpeedB = maxSetSPDB;
     break;
     
   default:
@@ -321,8 +334,17 @@ void seguirLinha(const float &erro, bool fullPID = true){
 	int pwmMotorDireito = 0;
 	int pwmMotorEsquerdo = 0;
 	
-	pwmMotorDireito = constrain(setSpeedA - (erroPID), 0, MaxSpeed);
-	pwmMotorEsquerdo = constrain(setSpeedB + (erroPID), 0, MaxSpeed);
+	float erroPIDA = (maxSetSPDA * erroPID) / maxSetSPDB;
+	float erroPIDB = (erroPID);
+
+	pwmMotorDireito = constrain(setSpeedA - (erroPIDA), 0, MaxSpeedA);
+	pwmMotorEsquerdo = constrain(setSpeedB + (erroPIDB), 0, MaxSpeedB);
+	
+  // Debug - pwm
+  // Serial.print(pwmMotorDireito);
+	// Serial.print(" ");
+	// Serial.print(pwmMotorEsquerdo);
+	// Serial.println("");
 
 	controlarMotores(pwmMotorDireito, pwmMotorEsquerdo);
 }

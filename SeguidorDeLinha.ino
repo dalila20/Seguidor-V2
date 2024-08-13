@@ -81,60 +81,6 @@ void identificarQuadrados(int* leituraDosSensores)
 	}
 }
 
-void seguirTest(int* leituraDosSensores){
-
-	//	Seguidor identificando mais de uma linha
-	if(identificarSensoresAlternados(leituraDosSensores)){
-		float erro = calcularErro(leituraDosSensores, 3, 7, false);
-		seguirLinha(erro * 1.5);
-	}
-
-	// Leitura duvidosa seguir reto
-	else if(contarSensoresAtivos(leituraDosSensores) >= 5){
-		float erro = calcularErro(leituraDosSensores, 3, 7, false);
-		seguirLinha(erro * -1.5);
-	}
-
-	// Seguir linha normalmente
-	else{
-		float erro = calcularErro(leituraDosSensores);
-		seguirLinha(erro);
-	}
-
-	if(identificarCruzamento(leituraDosSensores)){
-		//	Curva de 90
-		if((quadradosDireita + quadradosEsquerda) == 1){
-			conversao(direcao);
-		}
-		//	Desafio de re
-		else if(quadradosDireita == 1 && quadradosEsquerda == 1){
-			controlarMotores(0,0);
-			bip(2);
-			while (1){}
-		}
-		//	Rotatoria
-		else if(quadradosDireita >= 2 || quadradosEsquerda >= 2){
-			controlarMotores(0,0);
-			bip(3);
-			while (1){}
-		}
-		//	Desafio nao identificado
-		else{
-			bip();
-		}
-
-		sensorEsquerdaEmLeitura = false;
-		sensorDireitoEmLeitura = false;
-		quadradosEsquerda = 0;
-		quadradosDireita = 0;
-		direcao = 0;
-	}
-
-	else if(identificarLinha(leituraDosSensores, 2,8) && !identificarSensoresAlternados(leituraDosSensores)){
-		identificarQuadrados(leituraDosSensores);
-	}
-}
-
 void apenasSeguir(int* leituraDosSensores)
 {
 	float erro = calcularErro(leituraDosSensores);
@@ -147,6 +93,28 @@ void loop()
 	int leituraDosSensores[NUM_SENSORES];
 	lerSensores(leituraDosSensores);
 
+  // Debug - pinos analogicos
+	// Serial.print(analogRead(SENSOR3));
+	// Serial.print(" ");
+  // Serial.print(digitalRead(SENSOR3));
+  // Serial.print(" ");
+	// Serial.print(analogRead(SENSOR4));
+	// Serial.print(" ");
+  // Serial.print(digitalRead(SENSOR4));
+  // Serial.print(" ");
+	// Serial.print(analogRead(SENSOR5));
+	// Serial.print(" ");
+  // Serial.print(digitalRead(SENSOR5));
+  // Serial.print(" ");
+	// Serial.print(analogRead(SENSOR6));
+	// Serial.print(" ");
+  // Serial.print(digitalRead(SENSOR6));
+  // Serial.print(" ");
+	// Serial.print(analogRead(SENSOR7));
+  // Serial.print(" ");
+  // Serial.print(digitalRead(SENSOR7));
+	// Serial.println("");
+
 	// printarErro(); Ver PID no monitor
 	// printSens(leituraDosSensores);
 	// Serial.println(calcularPID(calcularErro(leituraDosSensores)));
@@ -157,7 +125,6 @@ void loop()
 
 	if (identificarLinha(leituraDosSensores))
 	{
-		// seguirTest(leituraDosSensores);
 		// Serial.println("identificarLinha");
 		apenasSeguir(leituraDosSensores);
 	}
@@ -166,12 +133,12 @@ void loop()
 	{
 		seguirLinha(erroAnterior, false);
 	}
-	// Entrar no menu
-	else if (leituraDosSensores[0] && leituraDosSensores[NUM_SENSORES - 1])
-	{
-    // Serial.println("configMain");
-		configMain();
-	}
+	// // Entrar no menu
+	// else if (leituraDosSensores[0] && leituraDosSensores[NUM_SENSORES - 1])
+	// {
+    // // Serial.println("configMain");
+	// 	configMain();
+	// }
 	// Parar
 	else
 	{
