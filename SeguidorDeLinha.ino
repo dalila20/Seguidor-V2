@@ -1,147 +1,135 @@
 #include "Config.hpp"
 #include "Basics.hpp"
 
-bool identificarCruzamentoPadrao(int* leituraDosSensores)
-{
-	return (!identificarSensoresAlternados(leituraDosSensores)
-			&& leituraDosSensores[0]
-			&& leituraDosSensores[NUM_SENSORES - 1]
-			&& identificarLinha(leituraDosSensores, 2, NUM_SENSORES - 1));
-}
-
-bool identificarCruzamentoIncompleto(int* leituraDosSensores)
-{
-	if (leituraDosSensores[0] || leituraDosSensores[NUM_SENSORES - 1])
-	{
-		for(int i = 1; i < NUM_SENSORES - 1; i++)
-		{
-			if(leituraDosSensores[i]) return false;
-		}
-		
-		return true;
-	}
-
-	else {
-		return false;
-	}
-}
-
-bool identificarCruzamento(int* leituraDosSensores)
-{
-	if (identificarCruzamentoPadrao(leituraDosSensores))
-	{
-		return true;
-	}
-	else if (identificarCruzamentoIncompleto(leituraDosSensores))
-	{
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-int quadradosEsquerda = 0;
-int quadradosDireita = 0;
-int direcao = 0;
-bool sensorDireitoEmLeitura = false;
-bool sensorEsquerdaEmLeitura = false;
-
-void identificarQuadrados(int* leituraDosSensores)
-{
-	if (sensorDireitoEmLeitura && !leituraDosSensores[NUM_SENSORES - 1])
-	{
-		sensorDireitoEmLeitura = false;
-		quadradosDireita++;
-		direcao = 1;
-	}
-	if (sensorEsquerdaEmLeitura && !leituraDosSensores[0])
-	{
-		sensorEsquerdaEmLeitura = false;
-		quadradosEsquerda++;
-		direcao = -1;
-	}
-	if (leituraDosSensores[0] && !sensorEsquerdaEmLeitura)
-	{
-		sensorEsquerdaEmLeitura = true;
-
-		// Serial.print(quadradosEsquerda);
-		// Serial.print(" - ");
-		// Serial.println(quadradosDireita);
-		// printSens(leituraDosSensores);
-	}
-	if (leituraDosSensores[NUM_SENSORES - 1] && !sensorDireitoEmLeitura)
-	{
-		sensorDireitoEmLeitura = true;
-
-		// Serial.print(quadradosEsquerda);
-		// Serial.print(" - ");
-		// Serial.println(quadradosDireita);
-		// printSens(leituraDosSensores);
-	}
-}
+bool curvaDireitaIdentificada = false;
+bool curvaEsquerdaIdentificada = false;
+bool sensorCurvaAtivo = false;
 
 void apenasSeguir(int* leituraDosSensores)
 {
 	float erro = calcularErro(leituraDosSensores);
-  	// Serial.println(erro);
+  // Serial.println(erro);
 	seguirLinha(erro);
 }
 
+void protocoloCurva90(int* s)
+{
+
+  int count = 0;
+  for (int G = 1; G < 8; G++)
+  {
+    count += s[G];
+  }
+
+  // Indica quantos sensores estão ativos para início da curva - se 7 estiverem ativos, indica uma faixa branca perpendicular à direção do carro
+  // Modifiquei para maior ou igual a 3 para identificar meia linha
+  if (count >= 3)
+  {
+
+    // Para o seguidor quando detecta a linha
+    Serial.println("Linha reta!");
+    controlarMotores(0, 0);
+    delay(100);
+
+    lerSensores(s);
+
+    // Acionará a curva à direita
+    if (curvaDireitaIdentificada)
+    {
+      Serial.println("Curva direita!");
+      while (!s[7] || !s[8])
+      {
+        lerSensores(s);
+        controlarMotores(30, velocidadeCurva90);
+        delay(40); // 40
+      }
+      curvaDireitaIdentificada = false; // Indica que a curva foi concluída 
+    }
+
+    else if (curvaEsquerdaIdentificada) // Acionará a curva à esquerda 
+    {
+      Serial.println("Curva esquerda!");
+      while (!s[0] || !s[1])
+      {
+        lerSensores(s);
+        controlarMotores(velocidadeCurva90, 30);
+        delay(40);
+      }
+      curvaEsquerdaIdentificada = false; // Indica que a curva foi concluída
+    }
+  }
+
+  else
+  { 
+    // Continua seguindo a linha reta
+    lerSensores(s);
+    apenasSeguir(s);
+  }
+}
+
+// Percebe o quadro da curva de 90º à direita, quando os 2 sensores são ativos
+void identificarCurva90(int* s)
+{
+  if (s[8] || s[0]) {
+    sensorCurvaAtivo = true;
+  }
+
+  else {
+  sensorCurvaAtivo = false;
+  }
+
+  if (sensorCurvaAtivo)
+  {
+    if (s[1] && !s[2] && !s[7] && !s[8])
+    { // Identifica curva à esquerda
+      curvaEsquerdaIdentificada = true;
+    }
+
+    else if (s[7] && !s[6] && !s[0] && !s[1])
+    { // Identifica curva à direita
+      curvaDireitaIdentificada = true;
+    }
+  }
+}
+
+int speed = 0;
 void loop()
 {
 	int leituraDosSensores[NUM_SENSORES];
 	lerSensores(leituraDosSensores);
-
-  // Debug - pinos analogicos
-	// Serial.print(analogRead(SENSOR3));
-	// Serial.print(" ");
-  // Serial.print(digitalRead(SENSOR3));
-  // Serial.print(" ");
-	// Serial.print(analogRead(SENSOR4));
-	// Serial.print(" ");
-  // Serial.print(digitalRead(SENSOR4));
-  // Serial.print(" ");
-	// Serial.print(analogRead(SENSOR5));
-	// Serial.print(" ");
-  // Serial.print(digitalRead(SENSOR5));
-  // Serial.print(" ");
-	// Serial.print(analogRead(SENSOR6));
-	// Serial.print(" ");
-  // Serial.print(digitalRead(SENSOR6));
-  // Serial.print(" ");
-	// Serial.print(analogRead(SENSOR7));
-  // Serial.print(" ");
-  // Serial.print(digitalRead(SENSOR7));
-	// Serial.println("");
-
-	// printarErro(); Ver PID no monitor
-	// printSens(leituraDosSensores);
-	// Serial.println(calcularPID(calcularErro(leituraDosSensores)));
-
-	// Serial.println((calcularErro(leituraDosSensores)));
-	// printSens(leituraDosSensores);
-	// return;
-
+	
 	if (identificarLinha(leituraDosSensores))
 	{
+    identificarCurva90(leituraDosSensores);
+
+    if (curvaDireitaIdentificada || curvaEsquerdaIdentificada) {
+      Serial.println("Curva de 90 identificada");
+
+      lerSensores(leituraDosSensores);
+      protocoloCurva90(leituraDosSensores);
+    }
+    else {
+      apenasSeguir(leituraDosSensores);
+    }
+
 		// Serial.println("identificarLinha");
 		apenasSeguir(leituraDosSensores);
 	}
+
 	// Encontrar novamente a pista
 	else if (abs(erroAnterior) > 1)
 	{
-		seguirLinha(erroAnterior, false);
+		// Serial.print("Linha perdida: ");
+		seguirLinha(erroAnterior);
 	}
-	// // Entrar no menu
-	// else if (leituraDosSensores[0] && leituraDosSensores[NUM_SENSORES - 1])
-	// {
-    // // Serial.println("configMain");
-	// 	configMain();
-	// }
+
 	// Parar
 	else
 	{
+		Serial.println("Sem linha!");
 		controlarMotores(0,0);
+    
+    // Resetando PID
+    calcularPID(0, false);
 	}
 }

@@ -1,28 +1,14 @@
 #pragma once
-//Sensor
-#define SENSOR1 10
-#define SENSOR2 9
-#define SENSOR3 A0
-#define SENSOR4 A1
-#define SENSOR5 A3
-#define SENSOR6 A4
+// Sensor
+#define SENSOR1 8
+#define SENSOR2 A7
+#define SENSOR3 A6
+#define SENSOR4 A5
+#define SENSOR5 A4
+#define SENSOR6 A3
 #define SENSOR7 A2
-#define SENSOR8 12
-#define SENSOR9 8
-
-/* Ordem das cores:
- * Vermelho: 5V
- * Laranja: GND
- * Amarelo: 10
- * Verde: A0
- * Azul: 9
- * Roxo: A1
- * Branco: 12
- * Branco: A3
- * Preto: A2
- * Marrom: 8
- * Vermelho: A4
-*/
+#define SENSOR8 A1
+#define SENSOR9 7
 
 #define NUM_SENSORES 9
 
@@ -40,45 +26,41 @@ void sensoresSetup()
   }
 }
 
-//Ponte H
-#define ENA 3
-#define IN1 2
-#define IN2 4
-#define IN3 7
+// Ponte H
+#define IN1 11
+#define IN2 10
+#define IN3 9
 #define IN4 6
-#define ENB 5
 
 void ponteHSetup()
 {
-  pinMode(ENA, OUTPUT);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-  pinMode(ENB, OUTPUT);
 }
 
-// Controle
-// 190 - 147
-// 150 - 116
-// 120 - 93
-#define nominalSetSPDA 150
-#define nominalSetSPDB 116
-#define velocidadeDesafio 80
+// Cerca de 65 no PWM é capaz de fazer o seguidor começar a se mover
+// Isso equivale a cerca de 4v
+// #define nominalSetSPDA 80
+// #define nominalSetSPDB 80
 
-#define maxSetSPDA 150
-#define maxSetSPDB 116
+// #define MaxSpeedA 75
+// #define MaxSpeedB 75
+
+// Os novos motores são menos potentes
+#define nominalSetSPDA 150 // 150
+#define nominalSetSPDB 150
 
 #define MaxSpeedA 150
-#define MaxSpeedB 116
+#define MaxSpeedB 150
 
-#define kp 30
-#define kd 30
-#define ki 0
+#define kp 45 // 35
+#define kd 350 // 350
+#define ki 0.01 // 0.08
 int setSpeedA = nominalSetSPDA;
 int setSpeedB = nominalSetSPDB;
-#define MaxIntegral 70
-#define PIDRefreshRate 30 //tempo (MS)
+#define MaxIntegral 650
+#define PIDRefreshRate 30 // tempo (ms)
 
-//Fazer curvas
-#define velocidadeDeCurva 120
+#define velocidadeCurva90 150

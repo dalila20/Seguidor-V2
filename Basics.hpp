@@ -1,39 +1,27 @@
 #include "Config.hpp"
 
-// Debug
-void printSens(const int* lei)
-{
-	for(int i = 0; i < NUM_SENSORES; i++)
-	{
-		Serial.print(lei[i]);
-	}
-	Serial.print("\n");
-}
-
 // Geral
 void lerSensores(int* vetorDeLeitura)
 {
-	for(int i = 0; i < NUM_SENSORES; i++)
+	for (int i = 0; i < NUM_SENSORES; i++)
 	{
-		if (sensores[i] == A0 || sensores[i] == A1
-		|| sensores[i] == A2 || sensores[i] == A3
-		|| sensores[i] == A4)
-		{
+		if (i > 0 && i < NUM_SENSORES - 2) {
 			int leitura = analogRead(sensores[i]);
-			if (leitura <= 80) {
+			if (leitura <= 100) {
 				vetorDeLeitura[i] = 1;
 			} else {
 				vetorDeLeitura[i] = 0;
 			}
-		} else {
+		} 
+		else {
 			vetorDeLeitura[i] = !digitalRead(sensores[i]);
 		}
-    // Serial.print(vetorDeLeitura[i]);
+    Serial.print(vetorDeLeitura[i]);
 	}
-  // Serial.println("");
+  Serial.println("");
 }
 
-// Unused
+// Não utilizado
 int contarSensoresAtivos(const int* leituraDosSensores, int inicial = 1, int final = 9)
 {
   	int total = 0;
@@ -45,16 +33,6 @@ int contarSensoresAtivos(const int* leituraDosSensores, int inicial = 1, int fin
 		}
 	}
 	return total;
-}
-
-// Unused
-void bip(int count = 1, int base = 1000)
-{
-  	for(int i = 1; i <= count; i++)
-	{
-		tone(BUZZER, base, 150);
-    	delay(300);
-  	}
 }
 
 void verificarBateria(){
@@ -83,14 +61,13 @@ void controlarMotores(const int &pwmMotorEsquerdo,const int &pwmMotorDireito)
 		digitalWrite(IN1, LOW);
 		digitalWrite(IN2, LOW);
 	} else {
-		analogWrite(ENA, abs(pwmMotorDireito));
 		if (pwmMotorDireito > 0)
 		{
-			digitalWrite(IN1, LOW);
-			digitalWrite(IN2, HIGH);
-		} else {
+			analogWrite(IN1, abs(pwmMotorDireito));
 			digitalWrite(IN2, LOW);
-			digitalWrite(IN1, HIGH);
+		} else {
+			digitalWrite(IN1, LOW);
+			analogWrite(IN2, abs(pwmMotorDireito));
 		}
 	}
   
@@ -98,68 +75,15 @@ void controlarMotores(const int &pwmMotorEsquerdo,const int &pwmMotorDireito)
 		digitalWrite(IN3, LOW);
 		digitalWrite(IN4, LOW);
 	} else {
-    	analogWrite(ENB, abs(pwmMotorEsquerdo));
 		if (pwmMotorEsquerdo > 0)
 		{
-			digitalWrite(IN3, LOW);
-			digitalWrite(IN4, HIGH);
-		} else {
+			analogWrite(IN3, abs(pwmMotorEsquerdo));
 			digitalWrite(IN4, LOW);
-			digitalWrite(IN3, HIGH);
+		} else {
+			digitalWrite(IN3, LOW);
+			analogWrite(IN4, abs(pwmMotorEsquerdo));
 		}
   	}
-}
-
-// Unused
-bool linhaCentralizada(const int* leituraDosSensores)
-{
-	for(int i = 0; i < 9; i++)
-	{
-		if (i > 2 && i < 6)
-		{
-			if (!leituraDosSensores[i])
-			{
-				return false;
-			}
-		}
-		else if(leituraDosSensores[i])
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-// 
-void conversao(int direcao)
-{
-	int leituraDosSensores[NUM_SENSORES];
-	lerSensores(leituraDosSensores);
-
-	if(direcao > 0)
-	{
-		controlarMotores(-velocidadeDeCurva, velocidadeDeCurva);
-	}
-	else if (direcao < 0)
-	{
-		controlarMotores(velocidadeDeCurva, -velocidadeDeCurva);
-	}
-	else
-	{
-		return;
-	}
-
-	// Rodo até o sensor do meio ficar inativo
-	while(leituraDosSensores[4])
-	{
-		lerSensores(leituraDosSensores);
-	}
-
-	// Depois rodo até o sensor do meio ficar ativo
-	while(!leituraDosSensores[4])
-	{
-		lerSensores(leituraDosSensores);
-	}
 }
 
 int identificarSensoresAlternados(const int* leituraDosSensores, int inicial = 1, int final = NUM_SENSORES - 1)
@@ -214,11 +138,11 @@ float calcularErro(const int* leituraDosSensores,
 {
 	float erro = 0;
 	int somatorioSensores = 0;
-	int pesos[NUM_SENSORES] = {0, 0, -4, -1, 0, 1, 4, 0, 0};
+	int pesos[NUM_SENSORES] = {0, -5, -2, -1, 0, 1, 2, 5, 0};
 	for (int i = inicial; i < final; i++)
 	{
 		erro += leituraDosSensores[i] * pesos[i];
-		somatorioSensores += leituraDosSensores[i];
+		if(pesos[i] != 0) somatorioSensores += leituraDosSensores[i];
 	}
 
 	if (somatorioSensores != 0)
@@ -232,84 +156,47 @@ float calcularErro(const int* leituraDosSensores,
 
 float calcularPID(const float& erro, bool fullPID = true)
 {
-	static unsigned long prevTime = 0;
+	unsigned long currentTime = millis();
+
+	static unsigned long prevTime = currentTime;
 	static float prevErrorPID = 0;
 	static float integral = 0;
 	static float derivative = 0;
 	float erroPID;
 
-	unsigned long currentTime = millis();
 	unsigned long dt = currentTime - prevTime;
 
+  // Reset PID
 	if(!fullPID) {
 		prevTime = 0;
 		prevErrorPID = 0;
 		integral = 0;
 		derivative = 0;
 	}
+
 	if(dt > PIDRefreshRate && fullPID){
-		derivative = (erro - prevErrorPID) * dt;
-		// if(derivative < 20) derivative = 0;
+		derivative = (erro - prevErrorPID) / dt;
 		integral += erro * dt;
+    
+    if (integral > MaxIntegral) integral = MaxIntegral;
+		else if (integral < -MaxIntegral) integral = -MaxIntegral;
 		
 		prevErrorPID = erro;
 		prevTime = currentTime;
 	}
 
 
-	if(ki*integral > MaxIntegral) integral = MaxIntegral/ki;
   erroPID = (erro * kp) + (ki * integral) + (kd * derivative);
 
   return erroPID;
 }
 
-// Loop para selecionar configuracoes
-int configMain()
-{
-  bip(1, 400);
-  int selecionado = 0;
-  int selecionadoAnterior = -1;
-  int sair = 0;
-
-  while (sair < 3)
-  {
-    selecionado = 0;
-    delay(200);
-    for(int i = 2; i < 7; i++)
-	{ 
-      if(!digitalRead(sensores[i])) selecionado = i-1;
-    }
-
-    if(selecionado == selecionadoAnterior) sair++;
-    if(selecionado) selecionadoAnterior = selecionado;
-  }
-
-  bip(selecionado);
-
-  switch (selecionado)
-  {
-  case 1: //Velocidade Normal
-    setSpeedA = nominalSetSPDA;
-    setSpeedB = nominalSetSPDB;
-    break;
-
-  case 2: //Velocidade alta
-    setSpeedA = maxSetSPDA;
-    setSpeedB = maxSetSPDB;
-    break;
-    
-  default:
-    break;
-  }
-  delay(2000);
-}
-
 void setup()
-{
+{	
 	Serial.begin(9600);
   	ponteHSetup();
   	sensoresSetup();
-	verificarBateria();
+	// verificarBateria();
 }
 
 void printarErro(float erro)
@@ -334,17 +221,9 @@ void seguirLinha(const float &erro, bool fullPID = true){
 	int pwmMotorDireito = 0;
 	int pwmMotorEsquerdo = 0;
 	
-	float erroPIDA = (maxSetSPDA * erroPID) / maxSetSPDB;
-	float erroPIDB = (erroPID);
+	pwmMotorDireito = constrain(setSpeedA + ( erroPID ), 0, MaxSpeedA);
+	pwmMotorEsquerdo = constrain(setSpeedB - ( erroPID ), 0, MaxSpeedB);
+  // Serial.println(erroPID);
+	controlarMotores(pwmMotorEsquerdo, pwmMotorDireito);
 
-	pwmMotorDireito = constrain(setSpeedA - (erroPIDA), 0, MaxSpeedA);
-	pwmMotorEsquerdo = constrain(setSpeedB + (erroPIDB), 0, MaxSpeedB);
-	
-  // Debug - pwm
-  // Serial.print(pwmMotorDireito);
-	// Serial.print(" ");
-	// Serial.print(pwmMotorEsquerdo);
-	// Serial.println("");
-
-	controlarMotores(pwmMotorDireito, pwmMotorEsquerdo);
 }
